@@ -3,17 +3,15 @@
 
 (in-package :sdl2-ttf)
 
-(cffi:defcstruct (sdl-color)
-  (r :uint8)
-  (g :uint8)
-  (b :uint8)
-  (a :uint8))
-
-(defun create-sdl-color-list (red green blue alpha)
-  `(r ,red
-    g ,green
-    b ,blue
-    a ,alpha))
+(declaim (inline concat-color))
+(defun concat-colors (r g b a) ; FIXME: no 2
+  (declare (optimize (speed 3))
+           ((unsigned-byte 8) r g b a))
+  (the (unsigned-byte 32)
+       (+ (ash a #.(* 8 3))
+          (ash b #.(* 8 2))
+          (ash g #.(* 8 1))
+          (ash r #.(* 8 0)))))
 
 (defmacro define-render-function (style encoding)
   (let* ((foreign-function-name (format 'nil "TTF_Render~a_~a" encoding style))
@@ -21,17 +19,16 @@
          (low-level-lisp-name (function-symbol "%sdl-" wrapper-function-name)))
     `(define-function ,foreign-function-name ,wrapper-function-name ,low-level-lisp-name
          :pointer
-         ((font :pointer) (text :string) (color (:struct sdl-color)))
+         ((font :pointer)
+          (text :string)
+          (color :uint32))
          (font text red green blue alpha)
        (autocollect (ptr)
            ;;We need to wrap this manually since we are providing the function ourselves
            (check-null (sdl2-ffi::make-sdl-surface
                         :ptr (,low-level-lisp-name (autowrap:ptr font)
                                                    text
-                                                   (create-sdl-color-list red
-                                                                          green
-                                                                          blue
-                                                                          alpha))))
+                                                   (concat-colors red green blue alpha))))
          (sdl-free-surface ptr)))))
 
 ;;Shaded functions require a separate macro because issue #2 (bg and fg colors)
@@ -43,20 +40,16 @@
          (low-level-lisp-name (function-symbol "%sdl-" wrapper-function-name)))
     `(define-function ,foreign-function-name ,wrapper-function-name ,low-level-lisp-name
          :pointer
-         ((font :pointer) (text :string) (fg (:struct sdl-color)) (bg (:struct sdl-color)))
+         ((font :pointer) (text :string)
+          (fg-color :uint32)
+          (bg-color :uint32))
          (font text fg-red fg-green fg-blue fg-alpha bg-red bg-green bg-blue bg-alpha)
        (autocollect (ptr)
            (check-null (sdl2-ffi::make-sdl-surface
                         :ptr (,low-level-lisp-name (autowrap:ptr font)
                                                    text
-                                                   (create-sdl-color-list fg-red
-                                                                          fg-green
-                                                                          fg-blue
-                                                                          fg-alpha)
-                                                   (create-sdl-color-list bg-red
-                                                                          bg-green
-                                                                          bg-blue
-                                                                          bg-alpha))))
+                                                   (concat-colors fg-red fg-green fg-blue fg-alpha)
+                                                   (concat-colors bg-red bg-green bg-blue bg-alpha))))
          (sdl-free-surface ptr)))))
 
 (define-render-function "Solid" "Text")

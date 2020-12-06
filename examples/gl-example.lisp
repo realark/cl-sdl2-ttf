@@ -109,7 +109,6 @@
             (gl:bind-texture :texture-2d texture)
             (gl:tex-parameter :texture-2d :texture-wrap-s :clamp-to-border)
             (gl:tex-parameter :texture-2d :texture-wrap-t :clamp-to-border)
-            (gl:generate-mipmap :texture-2d)
             (gl:tex-parameter :texture-2d :texture-min-filter :linear)
             (gl:tex-parameter :texture-2d :texture-mag-filter :linear)
             (gl:tex-image-2d :texture-2d
@@ -122,6 +121,7 @@
                              :unsigned-byte
                              ;;Note this does NOT need to be freed because it's a dereferenced pointer belonging to struct, not a pointer to a pointer! It will be freed when free-surface is called later
                              (surface-pixels texture-surface))
+            (gl:generate-mipmap :texture-2d)
             (gl:bind-buffer :element-array-buffer (third buffers))
             (gl:buffer-data :element-array-buffer :static-draw element-attribute-array)
             (gl:free-gl-array element-attribute-array)
